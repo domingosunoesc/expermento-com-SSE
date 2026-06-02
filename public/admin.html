@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Painel Administrativo</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+
+        <h1>🛠 Painel Administrativo</h1>
+
+        <div class="admin-form">
+
+            <h3>Cadastrar Pedido</h3>
+
+            <input
+                type="text"
+                id="cliente"
+                placeholder="Nome do Cliente"
+            >
+
+            <input
+                type="text"
+                id="item"
+                placeholder="Item do Pedido"
+            >
+
+            <button
+                class="btn-add"
+                onclick="createOrder()"
+            >
+                ➕ Lançar Pedido
+            </button>
+
+            <button
+                class="btn-clear"
+                onclick="clearCompleted()"
+            >
+                🗑️ Limpar Concluídos
+            </button>
+
+        </div>
+
+        <div id="admin-list"></div>
+
+    </div>
+
+    <script>
+
+        async function createOrder() {
+
+            const cliente =
+                document.getElementById('cliente').value;
+
+            const item =
+                document.getElementById('item').value;
+
+
+            if (!cliente || !item) {
+
+                alert('Preencha todos os campos!');
+
+                return;
+            }
+
+            await fetch('/api/orders', {
+
+                method: 'POST',
+
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+
+                body: JSON.stringify({
+                    cliente,
+                    item
+                })
+            });
+
+            document.getElementById('cliente').value = '';
+
+            document.getElementById('item').value = '';
+
+            load();
+        }
+
+
+        async function updateStatus(id, newStatus) {
+
+            await fetch('/api/orders/update', {
+
+                method: 'POST',
+
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+
+                body: JSON.stringify({
+                    id,
+                    newStatus
+                })
+            });
+
+            load();
+        }
+
+
+        async function clearCompleted() {
+
+            const confirmar = confirm(
+                'Deseja remover pedidos entregues?'
+            );
+
+            if (!confirmar) return;
+
+            await fetch('/api/orders/completed', {
+                method: 'DELETE'
+            });
+
+            load();
+        }
+
+
+        async function load() {
+
+            const response =
+                await fetch('/api/orders');
+
+            const orders =
+                await response.json();
+
+            const list =
+                document.getElementById('admin-list');
+
+            list.innerHTML = orders.map(order => `
+
+                <div class="order-card ${getStatusClass(order.status)}">
+
+                    <small>
+                        Pedido #${order.id}
+                    </small>
+
+                    <h2>
+                        👤 ${order.cliente}
+                    </h2>
+
+                    <p>
+                        📦 ${order.item}
+                    </p>
+
+                    <strong>
+                        Status: ${order.status}
+                    </strong>
+
+                    ${
+                        order.status === 'Entregue'
+
+                        ?
+
+                        `<div class="done">
+                            ✅ Pedido Finalizado
+                        </div>`
+
+                        :
+
+                        `
+                        <div class="admin-actions">
+
+                            <button
+                                class="btn-prep"
+                                onclick="updateStatus(${order.id}, 'Preparando')"
+                            >
+                                Preparar
+                            </button>
+
+                            <button
+                                class="btn-ship"
+                                onclick="updateStatus(${order.id}, 'Saiu para Entrega')"
+                            >
+                                Enviar
+                            </button>
+
+                            <button
+                                class="btn-ok"
+                                onclick="updateStatus(${order.id}, 'Entregue')"
+                            >
+                                Finalizar
+                            </button>
+
+                        </div>
+                        `
+                    }
+
+                </div>
+
+            `).join('');
+        }
+
+
+        function getStatusClass(status) {
+
+            if (status === 'Preparando') {
+                return 'status-preparando';
+            }
+
+            if (status === 'Saiu para Entrega') {
+                return 'status-saiu';
+            }
+
+            if (status === 'Entregue') {
+                return 'status-entregue';
+            }
+
+            return 'status-pendente';
+        }
+
+        load();
+
+    </script>
+
+</body>
+</html>
